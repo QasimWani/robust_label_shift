@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Network(nn.Module):
-    def __init__(self, input_features=4, layer1=10, layer2=20, out_features=3):
+    def __init__(self, input_features=64, layer1=32, layer2=16, out_features=10):
         super().__init__()
         self.fc1 = nn.Linear(input_features, layer1)
         self.fc2 = nn.Linear(layer1, layer2)
