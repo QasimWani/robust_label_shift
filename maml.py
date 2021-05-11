@@ -44,9 +44,8 @@ class MAML():
         self.criteon = nn.MSELoss() #weight=self.theta
         self.meta_optim = optim.Adam([self.theta], lr=self.beta)
         
-    def update(self, max_norm=1):
+    def update(self, max_norm=2.0):
         """ Run a single iteration of MAML algorithm """
-        max_norm *= float(1 / self.cls)
         
         theta_prime = []
 
