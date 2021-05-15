@@ -48,6 +48,8 @@ def label_shift(args:dict):
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=args.target_ratio, random_state=42)
     
+    k_classes = len(np.unique(y_train)) #number of classes in training dist. assuming this equals test set
+    
     
     #### --- Create Imbalanced Dataset
     
@@ -55,6 +57,7 @@ def label_shift(args:dict):
     
     #Source distribution shift
     size = 2 * X_train.shape[0]
+    
     shifted_dist_idx = dirichlet_distribution(
         alpha=args.source_alpha, idx_by_label=idx_by_label, size=size, no_change=args.keep_source)
     
@@ -152,7 +155,7 @@ def label_shift(args:dict):
     plot_cost(cost, training_accuracy, test_accuracy, 'Source only Cost', args.display_plots)
     
     ### --- Generate Label Shift
-    conf_matrix, k = calculate_confusion_matrix(X_validation, y_validation, f)
+    conf_matrix, k = calculate_confusion_matrix(X_validation, y_validation, k_classes, f)
     mu = calculate_target_priors(X_test, k, f)
     #generate label weights, if possible
     label_weights = compute_weights(conf_matrix, mu, args.delta)
@@ -192,13 +195,13 @@ if __name__ == '__main__':
     parser.add_argument('-source_alpha', metavar='Dirichlet Distibution parameter', type=float, default=1,
                         help='Magnitude of Label Shift based on dirichlet dist.')
     #keep source alpha
-    parser.add_argument('-keep_source', type=bool, default=True,
+    parser.add_argument('-keep_source', type=int, default=1,
                         help='Keep original distribution or dirichlet label shift simulation')
     #target distribution alpha
     parser.add_argument('-target_alpha', metavar='Dirichlet Distibution parameter', type=float, default=1,
                         help='Magnitude of Label Shift based on dirichlet dist.')
     #keep target alpha
-    parser.add_argument('-keep_target', type=bool, default=True,
+    parser.add_argument('-keep_target', type=int, default=1,
                         help='Keep original distribution or dirichlet label shift simulation')
     #target distribution ratio
     parser.add_argument('-target_ratio', type=float, default=0.2,
@@ -228,4 +231,4 @@ if __name__ == '__main__':
     #Run MASIW
     result = label_shift(args)
     
-    print(f"{args.alg} result : {result[args.alg]}")
+    print(result[args.alg])

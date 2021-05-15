@@ -32,7 +32,7 @@ def group_by_label(y):
     return dict(OrderedDict(sorted(label_dict.items())))
 
 
-def dirichlet_distribution(alpha, idx_by_label, size, no_change=False):
+def dirichlet_distribution(alpha, idx_by_label, size, no_change:bool):
     """ Create Imbalanced data using dirichlet distribution """
     class_composition = np.array([len(idx_by_label[k]) for k in sorted(idx_by_label.keys())], np.int64)
     # print("Original Class composition: ", class_composition)
@@ -42,7 +42,6 @@ def dirichlet_distribution(alpha, idx_by_label, size, no_change=False):
         for v in idx_by_label.values():
             dataset += v
         return dataset
-    
     distribution = np.random.dirichlet([alpha]*len(idx_by_label), size=())
     idx_by_label = idx_by_label.copy()
     
@@ -188,14 +187,13 @@ def plot_cost(cost, train_acc, test_acc, title, to_plot):
     plt.show()
     
     
-def calculate_confusion_matrix(X, Y, f:Network):
+def calculate_confusion_matrix(X, Y, k, f:Network):
     """ 
     Calculates value for \hat{C}_{\hat{y}, y}
     @Params:
     - X : Validation data, i.e. X2
     - Y : Validation labels, i.e. Y2
     """
-    k = len(np.unique(Y)) #number of classes
     conf_matrx = np.zeros(shape=(k, k))
     #freeze params
     f.eval()
