@@ -18,7 +18,7 @@ class MAML():
     Implementation of Model-Agnostic Meta Learning algorithm for performing meta-gradient update
     Label Shift weights.
     """
-    def __init__(self, X, y, model, weights, alpha:float=0.05, beta:float=0.01):
+    def __init__(self, X, y, model, weights, alpha:float=0.01, beta:float=0.01):
         """ 
         Initialize params.
         @Params:
@@ -42,9 +42,9 @@ class MAML():
         self.beta = beta
         #define loss and optimizer
         self.criteon = nn.MSELoss() #weight=self.theta
-        self.meta_optim = optim.Adam([self.theta], lr=self.beta)
+        self.meta_optim = optim.SGD([self.theta], lr=self.beta)
         
-    def update(self, max_norm=2.0):
+    def update(self, max_norm=1.0):
         """ Run a single iteration of MAML algorithm """
         
         theta_prime = []
@@ -88,5 +88,5 @@ class MAML():
         return dot.to(device)
     
     def get_label_weights(self):
-        weights = self.theta.detach().numpy()
+        weights = self.theta.reciprocal().detach().numpy()
         return weights

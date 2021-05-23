@@ -218,6 +218,32 @@ def calculate_target_priors(X, k, f):
         target_priors[i] = len(np.where(preds == i)[0]) / len(preds)
     return target_priors
 
+
+def get_true_label_weights(y_train, k, y_test):
+    """ 
+    Returns true label weights based on source/medial and target dist. 
+    @Param: 
+    - y_train : training labels
+    - k : number of classes
+    - y_test : test labels
+    """
+    true_target_priors = np.zeros(k)
+    true_source_priors = np.zeros(k)
+    
+    for i in range(k):
+        true_target_priors[i] = float(len(np.where(y_test == i)[0])) / len(y_test)
+        
+    for i in range(k):
+        true_source_priors[i] = float(len(np.where(y_train == i)[0])) / len(y_train)
+    
+    regularizer = 0.2
+    try:
+        optimal_weights = true_target_priors / true_source_priors #optimal weights
+    except ZeroDivisionError:
+        print(f"Assumption violated")
+        optimal_weights = np.array([1/k]*k)
+    return (1 - regularizer) + optimal_weights * regularizer
+
 def compute_weights(cmf, target_priors, delta):
     """ Computes label weights """
     w, _ = np.linalg.eig(cmf + np.random.uniform(0, 1e-3, size=cmf.shape))
@@ -237,7 +263,7 @@ def compute_weights(cmf, target_priors, delta):
     return label_weights
 
 
-def train_iw(data, label_weights, network, epochs=500, print_st=True):
+def train_iw(data, label_weights, network=None, epochs=500, print_st=True):
     """ Train model using class weights """
     X, y, X_test, y_test = data
     start_time = time.time()
@@ -249,12 +275,12 @@ def train_iw(data, label_weights, network, epochs=500, print_st=True):
     
     model = Network().to(device) #load local model
     
-    cloned_params = {}
-
-    for layer in network.state_dict():
-        cloned_params[layer] = network.state_dict()[layer].clone()
-    
-    model.load_state_dict(cloned_params)
+    if network: 
+        cloned_params = {}
+        for layer in network.state_dict():
+            cloned_params[layer] = network.state_dict()[layer].clone()
+        
+        model.load_state_dict(cloned_params)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=0.005)
     
