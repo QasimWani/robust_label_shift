@@ -22,9 +22,6 @@ from model import Network
 from maml import MAML
 from utils import *
 
-#set reproducibility
-np.random.seed(0)
-torch.manual_seed(0)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") #Enable cuda if available
 
@@ -36,10 +33,17 @@ def label_shift(args:dict):
     {
         'naive' : None, #default training
         'bbse'  : None, #IW only
+        'oracle' : None, #use true label weights
         'malls' : None,  #subsampling + importance weighting
         'masiw' : None, #meta-learning + subsampling + importance weighting
     }
     """
+    
+    # set reproducibility
+    if args.seed >= 0:
+        np.random.seed(args.seed)
+        _ = torch.manual_seed(args.seed)
+        
     RESULTS = {}
         
     
@@ -56,14 +60,13 @@ def label_shift(args:dict):
     idx_by_label = group_by_label(y_train) #label : [indices of all labels]
     
     #Source distribution shift
-    size = 2 * X_train.shape[0]
-    
+    size = X_train.shape[0]**2
     shifted_dist_idx = dirichlet_distribution(
         alpha=args.source_alpha, idx_by_label=idx_by_label, size=size, no_change=args.keep_source)
     
     #Test distribution shift
     idx_by_label = group_by_label(y_test) #label : [indices of all labels]
-    size = 2 * X_test.shape[0]
+    size = X_test.shape[0]**2
     shifted_test_dist_idx = dirichlet_distribution(
         alpha=args.target_alpha, idx_by_label=idx_by_label, size=size, no_change=args.keep_target)
     
@@ -158,7 +161,13 @@ def label_shift(args:dict):
     conf_matrix, k = calculate_confusion_matrix(X_validation, y_validation, k_classes, f)
     mu = calculate_target_priors(X_test, k, f)
     #generate label weights, if possible
-    label_weights = compute_weights(conf_matrix, mu, args.delta)
+    label_weights = (1 - args.lambda_rlls) + args.lambda_rlls * compute_weights(conf_matrix, mu, args.delta)
+    
+    #!!! report true label weights, if arg specified !!!
+    if args.alg == 'oracle':
+        label_weights = get_true_label_weights(y_train, k_classes, y_test)
+    
+    # print(f'label weights: {label_weights}')
     
     #### --- Importance Weighting Training
     X_train, y_train = data #regain data
@@ -181,6 +190,9 @@ def label_shift(args:dict):
         maml.update()
     
     label_weights = maml.get_label_weights()   
+    # f_meta_weighted, cost, training_accuracy, test_accuracy = train_iw(
+    #     (X_train, y_train, X_test, y_test), label_weights, f_weighted, epochs=args.epochs, print_st=args.display_plots)
+    
     score, _ = predict_IW(f_weighted, label_weights, (X_test, y_test))
     
     RESULTS['masiw'] = score
@@ -194,23 +206,23 @@ if __name__ == '__main__':
     #source alpha
     parser.add_argument('-source_alpha', metavar='Dirichlet Distibution parameter', type=float, default=1,
                         help='Magnitude of Label Shift based on dirichlet dist.')
-    #keep source alpha
+    #keep source alpha (1 := keep, 0 := use original dist)
     parser.add_argument('-keep_source', type=int, default=1,
                         help='Keep original distribution or dirichlet label shift simulation')
     #target distribution alpha
     parser.add_argument('-target_alpha', metavar='Dirichlet Distibution parameter', type=float, default=1,
                         help='Magnitude of Label Shift based on dirichlet dist.')
-    #keep target alpha
+    #keep target alpha (1 := keep, 0 := use original dist)
     parser.add_argument('-keep_target', type=int, default=1,
                         help='Keep original distribution or dirichlet label shift simulation')
     #target distribution ratio
     parser.add_argument('-target_ratio', type=float, default=0.2,
                         help='Proportion of original data to be set aside for target set')
     #validation distribution ratio
-    parser.add_argument('-validation_ratio', type=float, default=0.5,
+    parser.add_argument('-validation_ratio', type=float, default=0.3,
                         help='Proportion of train data to be set aside for holdout set')
     #BBSE delta
-    parser.add_argument('-delta', type=float, default=1e-3,
+    parser.add_argument('-delta', type=float, default=1e-9,
                         help='BBSE inverse confusion matrix threshold paramter, delta.')
     #display graphs
     parser.add_argument('-display_plots', type=bool, default=False,
@@ -222,13 +234,30 @@ if __name__ == '__main__':
     parser.add_argument('-epochs', metavar='Gen epoch count', type=int, default=350,
                         help='Number of epochs to run all learning algorithms')
     #number of MAML updates
-    parser.add_argument('-meta_updates', metavar='number of meta updates', type=int, default=2,
+    parser.add_argument('-meta_updates', metavar='number of meta updates', type=int, default=3,
                         help='Number of MAML meta updates. Note: More updates increases sensitivity')
-    
+    #use true label weights
+    parser.add_argument('-use_oracle', metavar='True label weights for IW', type=int, default=0,
+                        help='Query labels from test dist to compute true IW')
+    #RLLS regularizer (without cp)
+    parser.add_argument('-lambda_rlls', metavar='Regularizer for RLLS', type=float, default=1,
+                        help='lambda for RLLS')
+    #set seed
+    parser.add_argument('-seed', metavar='Set seed value', type=int, default=-1,
+                        help='Int >= 0 for seed reproducibility. Set as -1 (default) for no seed.')
     
     args = parser.parse_args() #parse arguments
     
     #Run MASIW
-    result = label_shift(args)
+    # result = label_shift(args)
     
-    print(result[args.alg])
+    # print(result[args.alg])
+    
+    # temp - Run all algorithms
+    algs = ['oracle', 'naive', 'bbse', 'malls', 'masiw']
+    for alg in algs:
+        args.alg = alg
+        result = label_shift(args)
+        print(result[alg])
+        
+        
