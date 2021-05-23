@@ -18,7 +18,7 @@ class MAML():
     Implementation of Model-Agnostic Meta Learning algorithm for performing meta-gradient update
     Label Shift weights.
     """
-    def __init__(self, X, y, model, weights, alpha:float=0.01, beta:float=0.01):
+    def __init__(self, X, y, model, weights, alpha:float=0.01, beta:float=0.05):
         """ 
         Initialize params.
         @Params:
@@ -33,7 +33,6 @@ class MAML():
         self.cls = len(np.unique(X.numpy()))
         #define parameters, theta
         self.theta = Variable(torch.DoubleTensor(weights), requires_grad=True).to(device)
-        self.theta.reciprocal() #theta = [1 / w_0 ... 1/w_n]
         #define single task
         self.tasks = [X] #use batches for multi-task setting
         self.y = y.double()
@@ -88,5 +87,5 @@ class MAML():
         return dot.to(device)
     
     def get_label_weights(self):
-        weights = self.theta.reciprocal().detach().numpy()
+        weights = self.theta.detach().numpy()
         return weights
