@@ -179,6 +179,7 @@ def label_shift(args:dict):
     ### --- Importance Weighting Test
     score, _ = predict_IW(f_weighted, label_weights, (X_test, y_test)) ### Prediction
 
+    
     if args.alg != 'masiw':
         RESULTS[args.alg] = score
         return RESULTS
@@ -192,7 +193,6 @@ def label_shift(args:dict):
     label_weights = maml.get_label_weights()   
     # f_meta_weighted, cost, training_accuracy, test_accuracy = train_iw(
     #     (X_train, y_train, X_test, y_test), label_weights, f_weighted, epochs=args.epochs, print_st=args.display_plots)
-    
     score, _ = predict_IW(f_weighted, label_weights, (X_test, y_test))
     
     RESULTS['masiw'] = score
