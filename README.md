@@ -1,2 +1,2 @@
-# robust_label_shift
-Active Learning under Label Shift
+# Robust Label Shift
+Domain Adaptation using Label Shift
