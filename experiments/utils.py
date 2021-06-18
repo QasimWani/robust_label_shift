@@ -17,6 +17,8 @@ import torch.nn.functional as F
 from model import Network
 from maml import MAML
 
+import cvxpy as cp
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") #Enable cuda if available
 
@@ -101,7 +103,7 @@ def plot(y, indices, dist_type='Train', plot=False):
     
     
 # TODO: Port seperately
-def train(data, epochs=500, epsilon=1e-5, print_st=False):
+def train(data, epochs=500, epsilon=1e-5, print_st=False): #implement transforms
     """
     Train the model.
     Assumes access to global variable: loss function
@@ -263,7 +265,7 @@ def compute_weights(cmf, target_priors, delta):
     return label_weights
 
 
-def train_iw(data, label_weights, network=None, epochs=500, print_st=True):
+def train_iw(data, label_weights, network=None, epochs=500, print_st=True): #implement transforms
     """ Train model using class weights """
     X, y, X_test, y_test = data
     start_time = time.time()
@@ -334,3 +336,26 @@ def predict_IW(model, label_weights, data):
     predictions = np.array(predictions, dtype=np.int16)
     score = accuracy_score(y_test, predictions)
     return score, predictions
+
+
+
+### ERM for IS
+
+# https://github.com/Angie-Liu/labelshift/blob/5bbe517938f4e3f5bd14c2c105de973dcc2e0917/label_shift.py#L123
+def compute_w_opt(C_yy, mu_y, mu_train_y, rho=1e-3):
+    """
+    Finds optimal weights as ERM problem.
+    C_yy: conf_matrx ; output of `calculate_confusion_matrix`
+    mu_y: output of `calculate_target_priors` for testing set
+    mu_train_y : output of `calculate_target_priors` for training set
+    """
+    n = C_yy.shape[1]
+    theta = cp.Variable(n)
+    b = mu_y - mu_train_y
+    objective = cp.Minimize(cp.pnorm(C_yy @ theta - b) + rho * cp.pnorm(theta))
+    constraints = [-1 <= theta]
+    prob = cp.Problem(objective, constraints)
+
+    result = prob.solve()
+    w = 1 + theta.value
+    return w

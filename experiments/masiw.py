@@ -161,7 +161,8 @@ def label_shift(args:dict):
     conf_matrix, k = calculate_confusion_matrix(X_validation, y_validation, k_classes, f)
     mu = calculate_target_priors(X_test, k, f)
     #generate label weights, if possible
-    label_weights = (1 - args.lambda_rlls) + args.lambda_rlls * compute_weights(conf_matrix, mu, args.delta)
+    # label_weights = (1 - args.lambda_rlls) + args.lambda_rlls * compute_weights(conf_matrix, mu, args.delta)
+    label_weights = (1 - args.lambda_rlls) + args.lambda_rlls * compute_w_opt(conf_matrix, mu, calculate_target_priors(X_train, k, f))
     
     #!!! report true label weights, if arg specified !!!
     if args.alg == 'oracle':
