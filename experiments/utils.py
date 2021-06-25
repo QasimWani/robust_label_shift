@@ -34,12 +34,12 @@ def group_by_label(y):
     return dict(OrderedDict(sorted(label_dict.items())))
 
 
-def dirichlet_distribution(alpha, idx_by_label, size, no_change:bool):
+def dirichlet_distribution(alpha, idx_by_label, size, no_change:int):
     """ Create Imbalanced data using dirichlet distribution """
     class_composition = np.array([len(idx_by_label[k]) for k in sorted(idx_by_label.keys())], np.int64)
     # print("Original Class composition: ", class_composition)
     
-    if no_change:
+    if no_change == 1:
         dataset = []
         for v in idx_by_label.values():
             dataset += v

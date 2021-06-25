@@ -62,13 +62,13 @@ def label_shift(args:dict):
     #Source distribution shift
     size = X_train.shape[0]**2
     shifted_dist_idx = dirichlet_distribution(
-        alpha=args.source_alpha, idx_by_label=idx_by_label, size=size, no_change=args.keep_source)
+        alpha=args.source_alpha, idx_by_label=idx_by_label, size=size, no_change=int(args.keep_source))
     
     #Test distribution shift
     idx_by_label = group_by_label(y_test) #label : [indices of all labels]
     size = X_test.shape[0]**2
     shifted_test_dist_idx = dirichlet_distribution(
-        alpha=args.target_alpha, idx_by_label=idx_by_label, size=size, no_change=args.keep_target)
+        alpha=args.target_alpha, idx_by_label=idx_by_label, size=size, no_change=int(args.keep_target))
     
     #train Distribution shift
     plot(y_train, shifted_dist_idx, 'Train', args.display_plots)
@@ -138,7 +138,7 @@ def label_shift(args:dict):
         plt.grid()
         plt.show()
     
-    if args.alg != 'bbse':
+    if args.alg != 'bbse' or args.alg != 'mlls':
         ### Subsampling - take Medial Dist.
         X_train, y_train = X_train[medial_idx], y_train[medial_idx]
     
@@ -161,8 +161,10 @@ def label_shift(args:dict):
     conf_matrix, k = calculate_confusion_matrix(X_validation, y_validation, k_classes, f)
     mu = calculate_target_priors(X_test, k, f)
     #generate label weights, if possible
-    # label_weights = (1 - args.lambda_rlls) + args.lambda_rlls * compute_weights(conf_matrix, mu, args.delta)
-    label_weights = (1 - args.lambda_rlls) + args.lambda_rlls * compute_w_opt(conf_matrix, mu, calculate_target_priors(X_train, k, f))
+    if args.alg == 'bbse' or args.alg == 'malls':
+        label_weights = compute_weights(conf_matrix, mu, args.delta)
+    elif args.alg == 'mlls' or args.alg == 'masiw': #MASIW and RLLS
+        label_weights = (1 - args.lambda_rlls) + args.lambda_rlls * compute_w_opt(conf_matrix, mu, calculate_target_priors(X_train, k, f))
     
     #!!! report true label weights, if arg specified !!!
     if args.alg == 'oracle':
@@ -255,10 +257,8 @@ if __name__ == '__main__':
     # print(result[args.alg])
     
     # temp - Run all algorithms
-    algs = ['oracle', 'naive', 'bbse', 'malls', 'masiw']
+    algs = ['oracle', 'naive', 'bbse', 'mlls', 'malls', 'masiw']
     for alg in algs:
         args.alg = alg
         result = label_shift(args)
         print(result[alg])
-        
-        
